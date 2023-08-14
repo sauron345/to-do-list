@@ -8,6 +8,7 @@ from os.path import exists
 def user_authentication():
     global success_login, username
     success_login = False
+
     print("To-do list")
     print("Before enter the application, login/register in:")
 
@@ -59,12 +60,15 @@ def to_do_list():
         if choice == 1:
             try:
                 load_f = users_actions[username]['actions']
-                for action in load_f:
-                    print(msg.success("- " + action))
+                if load_f:
+                    for action in load_f:
+                        print(msg.success("- " + action))
+                else:
+                    print(msg.error(f"{username.title()} does not have any action"))
             except json.decoder.JSONDecodeError:
                 print(msg.error("File does not exist"))
             except KeyError:
-                print(msg.error(f"User: {username} does not have any action"))
+                print(msg.error(f"{username.title()} does not have any action"))
             finally:
                 to_do_list()
 
@@ -81,15 +85,17 @@ def to_do_list():
                 json.dump(users_actions, json_f, indent=4)
 
             print(msg.success("Your action has been successfully added"))
-
             to_do_list()
 
         elif choice == 3:
             action = input("Remove action: ")
-            if action in users_actions:
+            action_list = users_actions[username]['actions']
+
+            if action in action_list:
                 action_list.remove(action)
-                with open('actions_data.json', 'a') as json_f:
-                    json.dump(action_list, json_f, indent=4)
+                users_actions[username]['actions'] = action_list
+                with open('actions_data.json', 'w') as json_f:
+                    json.dump(users_actions, json_f, indent=4)
                 print(msg.success("Successfully removed action"))
             else:
                 print(msg.error("Entered action not found"))
@@ -97,17 +103,22 @@ def to_do_list():
 
         elif choice == 4:
             action = input("Name of action: ")
-            with open(filename, 'r') as json_f:
-                load_f = json.load(json_f)
-                if action in load_f:
-                    action_list: list = load_f[username]['actions']
-                    action_index = action_list.index(action)
-                    action_list.pop(action_index)
-                    new_action = input("Update the action: ")
-                    action_list.insert(action_index, new_action)
-                    print(msg.success("Successfully removed action"))
-                else:
-                    print(msg.error("Entered action not found"))
+            action_list = users_actions[username]['actions']
+
+            if action in action_list:
+                action_index = action_list.index(action)
+                action_list.pop(action_index)
+                new_action = input("Update the action: ")
+                action_list.insert(action_index, new_action)
+                users_actions[username]['actions'] = action_list
+
+                with open('actions_data.json', 'w') as json_f:
+                    json.dump(users_actions, json_f, indent=4)
+
+                print(msg.success("Successfully removed action"))
+            else:
+                print(msg.error("Entered action not found"))
+
             to_do_list()
 
         elif choice == 5:
@@ -120,17 +131,19 @@ def to_do_list():
 
 def load_json_data():
     global users_actions
+    users_actions = {}
+
     try:
-        load_f = open('actions_data.json', 'w+')
-        json_data = json.load(load_f)
-        for username_ in json_data:
+        load_f = open('actions_data.json', 'r')
+        users_actions = json.load(load_f)
+        for username_ in users_actions:
             usernames.append(username_)
+    except FileNotFoundError:
+        return [], users_actions
     except json.decoder.JSONDecodeError:
-        users_actions = {}
         return [], users_actions
     else:
-        return usernames, json_data
-    finally:
+        return usernames, users_actions
         load_f.close()
 
 
