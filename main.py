@@ -1,8 +1,8 @@
+from color_message import Message as msg
+from os.path import exists
 import maskpass
 import json
 import os
-from color_message import Message as msg
-from os.path import exists
 
 
 def user_authentication():
@@ -22,8 +22,8 @@ def user_authentication():
 
 
 def file_operations(operation: str):
-    filename: str = 'users_data.txt'
-    f = open(filename, operation)
+    text_filename: str = 'users_data.txt'
+    f = open(text_filename, operation)
 
     if operation == 'r':
         print("Logging in")
@@ -48,7 +48,8 @@ def file_operations(operation: str):
 
 def to_do_list():
     if success_login:
-        filename = 'actions_data.json'
+        if message_info:
+            print(message_info)
         print(f"Welcome {username.title()} in To-do list application!")
         # CRUD features
         choice = int(input("1 - Show all my actions\n"
@@ -59,16 +60,16 @@ def to_do_list():
 
         if choice == 1:
             try:
-                load_f = users_actions[username]['actions']
-                if load_f:
-                    for action in load_f:
+                actions_list = json_data[username]['actions']
+                if actions_list:
+                    for action in actions_list:
                         print(msg.success("- " + action))
                 else:
-                    print(msg.error(f"{username.title()} does not have any action"))
+                    message_info = msg.error(f"{username.title()} does not have any action")
             except json.decoder.JSONDecodeError:
-                print(msg.error("File does not exist"))
+                message_info = msg.error("File does not exist")
             except KeyError:
-                print(msg.error(f"{username.title()} does not have any action"))
+                message_info = msg.error(f"{username.title()} does not have any action")
             finally:
                 to_do_list()
 
@@ -76,48 +77,50 @@ def to_do_list():
             action = input("Enter your action here: ")
 
             if username in usernames:
-                users_actions[username]['actions'].append(action)
+                json_data[username]['actions'].append(action)
             else:
-                users_actions[username] = {'actions': [action]}
+                json_data[username] = {'actions': [action]}
                 usernames.append(username)
 
-            with open(filename, 'w') as json_f:
-                json.dump(users_actions, json_f, indent=4)
+            with open(json_filename, 'w') as json_f:
+                json.dump(json_data, json_f, indent=4)
 
-            print(msg.success("Your action has been successfully added"))
+            message_info = print(msg.success("Your action has been successfully added"))
             to_do_list()
 
         elif choice == 3:
             action = input("Remove action: ")
-            action_list = users_actions[username]['actions']
+            actions_list = json_data[username]['actions']
 
-            if action in action_list:
-                action_list.remove(action)
-                users_actions[username]['actions'] = action_list
-                with open('actions_data.json', 'w') as json_f:
-                    json.dump(users_actions, json_f, indent=4)
-                print(msg.success("Successfully removed action"))
+            if action in actions_list:
+                actions_list.remove(action)
+                json_data[username]['actions'] = actions_list
+
+                with open(json_filename, 'w') as json_f:
+                    json.dump(json_data, json_f, indent=4)
+
+                message_info = msg.success("Successfully removed action")
             else:
-                print(msg.error("Entered action not found"))
+                message_info = msg.error("Entered action not found")
             to_do_list()
 
         elif choice == 4:
             action = input("Name of action: ")
-            action_list = users_actions[username]['actions']
+            actions_list = json_data[username]['actions']
 
-            if action in action_list:
-                action_index = action_list.index(action)
-                action_list.pop(action_index)
+            if action in actions_list:
+                action_index = actions_list.index(action)
+                actions_list.pop(action_index)
                 new_action = input("Update the action: ")
-                action_list.insert(action_index, new_action)
-                users_actions[username]['actions'] = action_list
+                actions_list.insert(action_index, new_action)
+                json_data[username]['actions'] = actions_list
 
-                with open('actions_data.json', 'w') as json_f:
-                    json.dump(users_actions, json_f, indent=4)
+                with open(json_filename, 'w') as json_f:
+                    json.dump(json_data, json_f, indent=4)
 
-                print(msg.success("Successfully removed action"))
+                message_info = msg.success("Successfully updated action")
             else:
-                print(msg.error("Entered action not found"))
+                message_info = msg.error("Entered action not found")
 
             to_do_list()
 
@@ -125,31 +128,34 @@ def to_do_list():
             return None
 
         else:
-            print(msg.error("Invalid digit, only allowed is [1, 2, 3, 4, 5]"))
+            message_info = msg.error("Invalid digit, only allowed is [1, 2, 3, 4, 5]")
             to_do_list()
 
 
 def load_json_data():
-    global users_actions
-    users_actions = {}
+    global json_data, usernames, json_filename
+    json_filename = 'actions_data.json'
+    json_data = {}
+    usernames = []
 
     try:
-        load_f = open('actions_data.json', 'r')
-        users_actions = json.load(load_f)
-        for username_ in users_actions:
+        load_f = open(json_filename, 'r')
+        json_data = json.load(load_f)
+        for username_ in json_data:
             usernames.append(username_)
     except FileNotFoundError:
-        return [], users_actions
+        return [], json_data
     except json.decoder.JSONDecodeError:
-        return [], users_actions
+        return [], json_data
     else:
-        return usernames, users_actions
+        return usernames, json_data
         load_f.close()
 
 
 if __name__ == '__main__':
-    usernames = []
-    usernames, users_actions = load_json_data()
+    global message_info
+    message_info = ''
+    usernames, json_data = load_json_data()
 
     while True:
         user_authentication()
